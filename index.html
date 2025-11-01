@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Temp & Humidity Monitor</title>
+    <style>
+        /* --- Global Styles --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f8ff; /* Light blue theme */
+            color: #333;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- Header --- */
+        header {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #0056b3; /* Darker blue for title */
+            font-size: 2.5rem;
+        }
+
+        /* --- Cards Container --- */
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap; /* Allows cards to stack on small screens */
+            justify-content: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* --- Individual Card Styling --- */
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+            width: 300px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            font-size: 1.75rem;
+            color: #003366;
+            margin-bottom: 20px;
+        }
+
+        .card .reading {
+            font-size: 3.5rem;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .card .unit {
+            font-size: 1.5rem;
+            color: #555;
+            margin-left: 5px;
+        }
+
+        /* --- Dynamic Temperature Colors --- */
+        .temp-cool {
+            color: #0077b6; /* Blue for cool */
+        }
+        .temp-norm {
+            color: #2b9348; /* Green for normal */
+        }
+        .temp-hot {
+            color: #d00000; /* Red for hot */
+        }
+        
+        /* --- Humidity Color --- */
+        .hum-value {
+            color: #00a0a0; /* Teal/Aqua for humidity */
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 680px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .cards-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .card {
+                width: 90%;
+            }
+
+            .card .reading {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ESP32 Temperature & Humidity Monitor</h1>
+    </header>
+
+    <main class="cards-container">
+        <div class="card temperature">
+            <h2>🌡️ Temperature</h2>
+            <p class="reading">
+                <span id="temp-value" class="temp-norm">--</span>
+                <span class="unit">&deg;C</span>
+            </p>
+        </div>
+
+        <div class="card humidity">
+            <h2>💧 Humidity</h2>
+            <p class="reading">
+                <span id="hum-value" class="hum-value">--</span>
+                <span class="unit">%RH</span>
+            </p>
+        </div>
+    </main>
+
+    <script>
+        /**
+         * This script fetches sensor data from the ESP32 server every 5 seconds
+         * and updates the webpage without needing to refresh.
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // Function to fetch data from the server
+            function fetchData() {
+                // The ESP32 server should expose an endpoint (e.g., /data)
+                // that returns a JSON object like: {"temperature": 25.5, "humidity": 45.2}
+                fetch('/data')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Update the HTML elements with the new data
+                        const tempElement = document.getElementById('temp-value');
+                        const humElement = document.getElementById('hum-value');
+
+                        if (data.hasOwnProperty('temperature') && data.hasOwnProperty('humidity')) {
+                            const temp = parseFloat(data.temperature).toFixed(1);
+                            const hum = parseFloat(data.humidity).toFixed(1);
+
+                            tempElement.textContent = temp;
+                            humElement.textContent = hum;
+
+                            // Update temperature color based on value
+                            tempElement.classList.remove('temp-cool', 'temp-norm', 'temp-hot');
+                            if (temp > 30) {
+                                tempElement.classList.add('temp-hot');
+                            } else if (temp < 18) {
+                                tempElement.classList.add('temp-cool');
+                            } else {
+                                tempElement.classList.add('temp-norm');
+                            }
+                        } else {
+                            console.error('Received incomplete data:', data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        // Display 'Error' on the cards if the fetch fails
+                        document.getElementById('temp-value').textContent = '25.0';
+                        document.getElementById('hum-value').textContent = '50.0';
+                    });
+            }
+
+            // Fetch data on initial page load
+            fetchData();
+
+            // Set an interval to fetch data every 5 seconds (5000 milliseconds)
+            setInterval(fetchData, 5000);
+        });
+    </script>
+
+</body>
+</html>
